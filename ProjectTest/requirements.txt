@@ -1,0 +1,11 @@
+# requirements.txt
+selenium==4.15.0
+pytest==7.4.3
+pytest-html==4.1.1
+pytest-xdist==3.5.0
+webdriver-manager==4.0.1
+opencv-python==4.8.1.78
+numpy==1.24.3
+Pillow==10.1.0
+sounddevice==0.4.6
+pydub==0.25.1
