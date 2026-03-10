@@ -3,145 +3,489 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SBI · Voice Banking</title>
-    <!-- Font Awesome 6 -->
+    <title>SBI · Voice‑Auth · fixed voice detection</title>
+    <!-- Font Awesome 6 (icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS from original code - NO CHANGES */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: #eef5fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .sbi-card {
+            width: 100%;
+            max-width: 880px;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px rgba(0, 40, 60, 0.15), 0 5px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+            border: 1px solid #d0e2f0;
+        }
+
+        .sbi-header {
+            background: #f0f7fc;
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 2px solid #b8d2e8;
+        }
+
+        .sbi-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sbi-logo i {
+            font-size: 2.8rem;
+            color: #1e4a7a;
+        }
+
+        .sbi-logo-text {
+            color: #1e4a7a;
+            line-height: 1.2;
+        }
+
+        .sbi-logo-text .top {
+            font-size: 1.1rem;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+
+        .sbi-logo-text .bank-name {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #003366;
+        }
+
+        .page {
+            padding: 30px 40px 38px 40px;
+            background: #ffffff;
+        }
+
+        .hidden-page {
+            display: none !important;
+        }
+
+        .btn {
+            background: #ffffff;
+            border: 1.5px solid #a0b8d0;
+            color: #1e4a7a;
+            font-weight: 500;
+            font-size: 1.05rem;
+            padding: 12px 30px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: none;
+        }
+
+        .btn:hover {
+            background: #f5f9ff;
+            border-color: #7e9ec0;
+        }
+
+        .btn-primary {
+            background: #ffffff;
+            border: 1.5px solid #1e4a7a;
+            color: #1e4a7a;
+        }
+
+        .btn-primary:hover {
+            background: #eaf2fc;
+        }
+
+        .btn-secondary {
+            background: #ffffff;
+            border: 1.5px solid #b0c4de;
+            color: #2b4b6f;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        .field label {
+            font-weight: 500;
+            color: #1e4a7a;
+            margin-bottom: 6px;
+            display: block;
+            font-size: 0.95rem;
+            text-transform: capitalize;
+        }
+
+        .field input, .field select {
+            width: 100%;
+            padding: 14px 20px;
+            border: 1.5px solid #cbdae9;
+            border-radius: 30px;
+            font-size: 1rem;
+            background: #ffffff;
+            transition: 0.15s;
+        }
+
+        .field input:focus, .field select:focus {
+            border-color: #7e9ec0;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(126, 158, 192, 0.15);
+        }
+
+        .row2 {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .row2 > div {
+            flex: 1 1 180px;
+        }
+
+        .mic-panel {
+            background: #f8fcff;
+            border-radius: 36px;
+            padding: 24px 28px;
+            margin: 20px 0 18px;
+            border: 1.5px solid #c0d4e8;
+        }
+
+        .mic-row {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .mic-device {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 110px;
+        }
+
+        .mic-circle {
+            background: #1e4a7a;
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: 0.15s;
+            color: white;
+            font-size: 2.4rem;
+            position: relative;
+        }
+
+        .mic-circle.active {
+            background: #b33f3f;
+        }
+        
+        .mic-circle.listening {
+            background: #2a9d8f;
+            animation: pulse 2s infinite;
+        }
+        
+        .mic-circle.correct {
+            background: #2a9d8f;
+            animation: none;
+        }
+        
+        .mic-circle.incorrect {
+            background: #b33f3f;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(42, 157, 143, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(42, 157, 143, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(42, 157, 143, 0); }
+        }
+
+        .mic-label {
+            margin-top: 8px;
+            font-weight: 500;
+            color: #1e4a7a;
+            font-size: 0.9rem;
+        }
+
+        .question-bubble {
+            flex: 1;
+            background: #ffffff;
+            border-radius: 36px;
+            padding: 18px 24px;
+            font-weight: 400;
+            font-size: 1.1rem;
+            color: #1e4a7a;
+            border: 1.5px solid #b8d2e8;
+            min-width: 250px;
+        }
+
+        .status-message {
+            margin-top: 15px;
+            padding: 10px;
+            text-align: center;
+            color: #1e4a7a;
+            font-size: 0.95rem;
+            min-height: 40px;
+            font-weight: 500;
+        }
+
+        .canvas-area {
+            background: #f8fcff;
+            border-radius: 36px;
+            padding: 24px;
+            margin: 18px 0;
+            border: 1.5px solid #c0d4e8;
+            text-align: center;
+        }
+
+        canvas {
+            background: white;
+            border-radius: 24px;
+            border: 2px solid #b8cde0;
+            width: 100%;
+            max-width: 340px;
+            height: auto;
+            cursor: crosshair;
+            margin: 12px auto;
+            display: block;
+        }
+
+        .shape-badge {
+            font-size: 2.8rem;
+            background: #f0f7fc;
+            color: #1e4a7a;
+            padding: 10px 36px;
+            border-radius: 50px;
+            display: inline-block;
+            border: 2px solid #b8cde0;
+            font-weight: 400;
+        }
+
+        .alert-info {
+            background: #f2f8ff;
+            border-left: 4px solid #1e4a7a;
+            padding: 14px 22px;
+            border-radius: 30px;
+            color: #1e4a7a;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+
+        .welcome-hero {
+            background: #f8fcff;
+            border-radius: 36px;
+            padding: 36px 32px;
+            margin-bottom: 24px;
+            color: #1e4a7a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid #c0d4e8;
+            text-align: center;
+        }
+
+        .welcome-text h2 {
+            font-size: 2.4rem;
+            font-weight: 300;
+            color: #2b4b6f;
+        }
+
+        .welcome-text h1 {
+            font-size: 3.8rem;
+            font-weight: 500;
+            color: #003366;
+            line-height: 1.2;
+        }
+
+        .footer-note {
+            height: 8px;
+        }
+        
+        .bot-denied {
+            text-align: center;
+            padding: 50px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .bot-denied h1 {
+            color: #b33f3f;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .bot-denied p {
+            color: #1e4a7a;
+            font-size: 1.2rem;
+        }
+
+        .small-note {
+            font-size: 0.9rem;
+            color: #6d8aac;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        .success-text {
+            color: #2a9d8f;
+            font-weight: 600;
+        }
+
+        .failure-text {
+            color: #b33f3f;
+            font-weight: 600;
+        }
+
+        .retry-btn {
+            background: #ffd700;
+            color: #1e4a7a;
+            border: 1.5px solid #daa520;
+            margin-left: 10px;
+        }
+        
+        .retry-btn:hover {
+            background: #ffed4a;
+        }
+    </style>
 </head>
 <body>
-    <div class="sbi-card" id="appRoot">
-        <!-- Header -->
-        <div class="sbi-header">
-            <div class="sbi-logo">
-                <i class="fas fa-university"></i>
-                <div class="sbi-logo-text">
-                    <div class="top">State Bank of India</div>
-                    <div class="bank-name">SBI</div>
-                </div>
-            </div>
-        </div>
 
-        <!-- PAGE 1 : WELCOME -->
-        <div id="pageWelcome" class="page">
-            <div class="welcome-hero">
-                <div class="welcome-text">
-                    <h2>Welcome To</h2>
-                    <h1>State Bank of India</h1>
-                </div>
+<div class="sbi-card" id="appRoot">
+    <!-- Header -->
+    <div class="sbi-header">
+        <div class="sbi-logo">
+            <i class="fas fa-university"></i>
+            <div class="sbi-logo-text">
+                <div class="top">State Bank of India</div>
+                <div class="bank-name">SBI</div>
             </div>
-            <div style="text-align: center; margin: 20px 0 10px;">
-                <button class="btn btn-primary" id="gotoAuthBtn">Continue</button>
-            </div>
-        </div>
-
-        <!-- PAGE 2 : SIGN IN / REGISTER CHOICE -->
-        <div id="pageAuthChoice" class="page hidden-page">
-            <h2><i class="fas fa-lock"></i> Authentication</h2>
-            <div class="flex-row" style="justify-content: center; margin: 30px 0;">
-                <button class="btn" id="showSigninBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
-                <button class="btn btn-primary" id="showRegisterBtn"><i class="fas fa-user-plus"></i> Register</button>
-            </div>
-        </div>
-
-        <!-- PAGE 3 : REGISTRATION FORM -->
-        <div id="pageRegister" class="page hidden-page">
-            <h3><i class="fas fa-edit"></i> New Customer Registration</h3>
-            <div class="field">
-                <label>Full name</label>
-                <input type="text" id="regName" placeholder="Rajesh Kumar">
-            </div>
-            <div class="row2">
-                <div class="field">
-                    <label>Aadhaar number</label>
-                    <input type="text" id="regAadhar" maxlength="12" placeholder="12 digits">
-                </div>
-                <div class="field">
-                    <label>Date of birth</label>
-                    <input type="date" id="regDob">
-                </div>
-            </div>
-            <div class="row2">
-                <div class="field">
-                    <label>Gender</label>
-                    <select id="regGender">
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Other</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label>Mobile</label>
-                    <input type="tel" id="regMobile" placeholder="9876543210">
-                </div>
-            </div>
-            <div class="field">
-                <label>Email</label>
-                <input type="email" id="regEmail" placeholder="name@example.com">
-            </div>
-            <div class="field">
-                <label>Create password</label>
-                <input type="password" id="regPwd" placeholder="••••••••">
-            </div>
-            <div class="flex-row">
-                <button class="btn btn-primary" id="registerUserBtn"><i class="fas fa-check-circle"></i> Register</button>
-                <button class="btn btn-secondary" id="backFromReg">Back</button>
-            </div>
-        </div>
-
-        <!-- PAGE 4 : VERIFICATION -->
-        <div id="pageVerify1" class="page hidden-page">
-            <h3><i class="fas fa-microchip"></i> Voice Verification</h3>
-            <div class="field">
-                <label>Aadhaar number</label>
-                <input type="text" id="loginUid" placeholder="Enter Aadhaar">
-            </div>
-            <div class="field">
-                <label>Password</label>
-                <input type="password" id="loginPwd" placeholder="••••••••">
-            </div>
-
-            <div class="mic-panel">
-                <div class="mic-row">
-                    <div class="mic-device">
-                        <div class="mic-circle" id="micButton">
-                            <i class="fas fa-microphone"></i>
-                        </div>
-                        <span class="mic-label" id="micStatusLabel">tap to speak</span>
-                    </div>
-                    <div class="question-bubble" id="questionDisplay">Security question</div>
-                </div>
-                <div class="status-message" id="voiceStatus">
-                    <span id="audioMessage">Tap microphone and speak your answer</span>
-                </div>
-            </div>
-
-            <div class="flex-row" style="justify-content: space-between;">
-                <button class="btn btn-primary" id="submitV1"><i class="fas fa-shield-halved"></i> Verify</button>
-                <button class="btn btn-secondary" id="backFromV1">Cancel</button>
-            </div>
-            <div class="small-note">You have 5 attempts. New question each time.</div>
-        </div>
-
-        <!-- PAGE 5 : SHAPE VERIFICATION -->
-        <div id="pageVerify2" class="page hidden-page">
-            <div class="alert-info">
-                <i class="fas fa-exclamation-triangle"></i> Maximum attempts exceeded
-            </div>
-            <h3>Draw the shape shown below</h3>
-            <div style="text-align: center;">
-                <span class="shape-badge" id="shapeDisplay">⬤</span>
-            </div>
-            <div class="canvas-area">
-                <canvas id="drawCanvas" width="340" height="200"></canvas>
-                <div class="flex-row" style="justify-content: center; margin-top: 12px;">
-                    <button class="btn btn-secondary" id="clearCanvas"><i class="fas fa-eraser"></i> Clear</button>
-                    <button class="btn btn-primary" id="submitShape"><i class="fas fa-check"></i> Submit</button>
-                </div>
-            </div>
-            <button class="btn btn-secondary" id="backFromV2">← Back</button>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- PAGE 1 : WELCOME -->
+    <div id="pageWelcome" class="page">
+        <div class="welcome-hero">
+            <div class="welcome-text">
+                <h2>Welcome To</h2>
+                <h1>State Bank of India</h1>
+            </div>
+        </div>
+        <div style="text-align: center; margin: 20px 0 10px;">
+            <button class="btn btn-primary" id="gotoAuthBtn" style="font-size: 1.2rem; padding: 12px 42px;">Continue</button>
+        </div>
+        <div class="footer-note"></div>
+    </div>
+
+    <!-- PAGE 2 : SIGN IN / REGISTER CHOICE -->
+    <div id="pageAuthChoice" class="page hidden-page">
+        <h2 style="color: #1e4a7a; font-weight: 400; margin-bottom: 28px;"><i class="fas fa-lock"></i> Authentication</h2>
+        <div class="flex-row" style="justify-content: center; margin: 30px 0;">
+            <button class="btn" id="showSigninBtn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+            <button class="btn btn-primary" id="showRegisterBtn"><i class="fas fa-user-plus"></i> Register</button>
+        </div>
+        <div class="footer-note"></div>
+    </div>
+
+    <!-- PAGE 3 : REGISTRATION FORM -->
+    <div id="pageRegister" class="page hidden-page">
+        <h3 style="color:#1e4a7a; font-weight: 400; margin-bottom: 20px;"><i class="fas fa-edit"></i> New Customer Registration</h3>
+        <div class="field"><label>Full name (as per aadhaar)</label><input type="text" id="regName" placeholder="Rajesh Kumar"></div>
+        <div class="row2">
+            <div class="field"><label>Aadhaar number (user id)</label><input type="text" id="regAadhar" maxlength="12" placeholder="12 digits"></div>
+            <div class="field"><label>Date of birth</label><input type="date" id="regDob"></div>
+        </div>
+        <div class="row2">
+            <div class="field"><label>Gender</label><select id="regGender"><option>Male</option><option>Female</option><option>Other</option></select></div>
+            <div class="field"><label>Mobile</label><input type="tel" id="regMobile" placeholder="9876543210"></div>
+        </div>
+        <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="name@example.com"></div>
+        <div class="field"><label>Create password (8+ chars, 1 capital, 1 number, 1 special)</label><input type="password" id="regPwd" placeholder=""></div>
+        <div class="flex-row">
+            <button class="btn btn-primary" id="registerUserBtn"><i class="fas fa-check-circle"></i> Register</button>
+            <button class="btn btn-secondary" id="backFromReg">Back</button>
+        </div>
+        <div class="footer-note"></div>
+    </div>
+
+    <!-- PAGE 4 : VERIFICATION STAGE 1 - FIXED VOICE DETECTION -->
+    <div id="pageVerify1" class="page hidden-page">
+        <h3 style="color:#1e4a7a; font-weight: 400;"><i class="fas fa-microchip"></i> Voice‑verified sign in</h3>
+        <div class="field"><label>User id (aadhaar)</label><input type="text" id="loginUid" placeholder="Aadhaar number"></div>
+        <div class="field"><label>Password</label><input type="password" id="loginPwd" placeholder=""></div>
+
+        <div class="mic-panel" id="micSensorZone">
+            <div class="mic-row">
+                <div class="mic-device">
+                    <div class="mic-circle" id="micButton">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <span class="mic-label" id="micStatusLabel">tap to speak</span>
+                </div>
+                <div class="question-bubble" id="questionDisplay">Security question</div>
+            </div>
+            <div class="status-message" id="voiceStatus">
+                <span id="audioMessage">Tap microphone and speak your answer</span>
+            </div>
+        </div>
+
+        <div class="flex-row" style="justify-content: space-between;">
+            <button class="btn btn-primary" id="submitV1"><i class="fas fa-shield-halved"></i> Verify</button>
+            <button class="btn btn-secondary" id="backFromV1">Cancel</button>
+        </div>
+        <div class="small-note">🎤 Speak clearly into your microphone. Timer starts when you speak.</div>
+        <div class="footer-note"></div>
+    </div>
+
+    <!-- PAGE 5 : SECOND VERIFICATION (shape drawing) -->
+    <div id="pageVerify2" class="page hidden-page">
+        <div class="alert-info">
+            <i class="fas fa-exclamation-triangle"></i> Maximum attempts exceeded – additional security
+        </div>
+        <h3 style="color:#1e4a7a; font-weight: 400; margin-bottom: 14px;">Draw the shape shown below</h3>
+        <div style="text-align: center;">
+            <span class="shape-badge" id="shapeDisplay">⬤</span>
+        </div>
+        <div class="canvas-area">
+            <canvas id="drawCanvas" width="340" height="200"></canvas>
+            <div class="flex-row" style="justify-content: center; margin-top: 12px;">
+                <button class="btn btn-secondary" id="clearCanvas"><i class="fas fa-eraser"></i> Clear</button>
+                <button class="btn btn-primary" id="submitShape"><i class="fas fa-check"></i> Submit</button>
+            </div>
+        </div>
+        <button class="btn btn-secondary" id="backFromV2">← Back</button>
+        <div class="footer-note"></div>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
 </body>
 </html>
