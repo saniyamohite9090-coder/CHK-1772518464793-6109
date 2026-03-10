@@ -1,0 +1,38 @@
+{
+  "users": [
+    {
+      "id": "1234567890123",
+      "name": "Demo User",
+      "aadhar": "123412341234",
+      "dob": "1985-05-15",
+      "gender": "Male",
+      "mobile": "9988776655",
+      "email": "demo@bank.com",
+      "password": "Demo@123",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "1773101414673",
+      "name": "Saniya Mohite _SY_AI&DS_SSWCOE",
+      "aadhar": "123456789123",
+      "dob": "2026-03-12",
+      "gender": "Female",
+      "mobile": "1234567891",
+      "email": "saniyamohite9090@gmail.com",
+      "password": "Saniya@123",
+      "createdAt": "2026-03-10T00:10:14.673Z"
+    },
+    {
+      "id": "1773106135912",
+      "name": "mahi more",
+      "aadhar": "987654321987",
+      "dob": "2026-06-09",
+      "gender": "Female",
+      "mobile": "1234567891",
+      "email": "saniyamohite9090@gmail.com",
+      "password": "Mahi@123",
+      "createdAt": "2026-03-10T01:28:55.913Z"
+    }
+  ],
+  "audits": []
+}

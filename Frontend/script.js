@@ -1,14 +1,6 @@
-// ===== DATABASE INIT =====
-let db = JSON.parse(localStorage.getItem('sbi_formal_db')) || { 
-    users: [], 
-    audits: [] 
-};
+const API_URL = 'http://localhost:5000/api';
 
-function persist() { 
-    localStorage.setItem('sbi_formal_db', JSON.stringify(db)); 
-}
-
-// ===== PAGE NAVIGATION =====
+// Page management
 const pages = {
     welcome: document.getElementById('pageWelcome'),
     auth: document.getElementById('pageAuthChoice'),
@@ -22,19 +14,226 @@ function show(pageId) {
     pages[pageId].classList.remove('hidden-page');
 }
 
-// ===== NAVIGATION EVENT LISTENERS =====
+// Event listeners
 document.getElementById('gotoAuthBtn').addEventListener('click', () => show('auth'));
 document.getElementById('showRegisterBtn').addEventListener('click', () => show('register'));
 document.getElementById('showSigninBtn').addEventListener('click', () => {
     setRandomQuestion();
+    resetVoiceState();
     show('verify1');
 });
 document.getElementById('backFromReg').addEventListener('click', () => show('auth'));
 document.getElementById('backFromV1').addEventListener('click', () => show('auth'));
 document.getElementById('backFromV2').addEventListener('click', () => show('welcome'));
 
-// ===== REGISTRATION =====
-document.getElementById('registerUserBtn').addEventListener('click', () => {
+// Questions bank
+const questionBank = [
+    "What happens to ice in a hot pan?",
+    "If you touch a hot stove what do you feel?",
+    "Can humans walk?",
+    "Can you drink water?",
+    "Do you have eyes?",
+    "Can you clap?",
+    "Do you sleep at night?",
+    "Can you eat food?",
+    "Do you use a mobile phone?",
+    "Can you smile?"
+];
+
+const correctAnswerMap = {
+    "What happens to ice in a hot pan?": ["melts", "it melts", "melting", "turns to water"],
+    "If you touch a hot stove what do you feel?": ["pain", "burn", "hot", "hurt"],
+    "Can humans walk?": ["yes", "yes they can", "they can", "of course"],
+    "Can you drink water?": ["yes", "i can", "sure", "of course"],
+    "Do you have eyes?": ["yes", "i do", "yes i have"],
+    "Can you clap?": ["yes", "i can clap", "sure"],
+    "Do you sleep at night?": ["yes", "usually", "sometimes"],
+    "Can you eat food?": ["yes", "of course", "i eat"],
+    "Do you use a mobile phone?": ["yes", "sometimes", "i do"],
+    "Can you smile?": ["yes", "i can smile", "of course"]
+};
+
+// Voice state
+let voiceState = {
+    audioDetected: false,
+    capturedAnswer: "",
+    isCorrect: false,
+    question: "",
+    micActive: false,
+    userSpoke: false
+};
+
+let micTimer = null;
+let attemptCount = 0;
+const MAX_ATTEMPTS = 5;
+
+function setRandomQuestion() {
+    let idx = Math.floor(Math.random() * questionBank.length);
+    voiceState.question = questionBank[idx];
+    document.getElementById('questionDisplay').innerText = voiceState.question;
+}
+
+function resetVoiceState() {
+    voiceState.audioDetected = false;
+    voiceState.capturedAnswer = "";
+    voiceState.isCorrect = false;
+    voiceState.micActive = false;
+    voiceState.userSpoke = false;
+    
+    if (micTimer) clearTimeout(micTimer);
+    
+    document.getElementById('audioMessage').innerHTML = 'Tap microphone and speak your answer';
+    document.getElementById('micStatusLabel').innerText = 'tap to speak';
+    document.getElementById('micButton').classList.remove('active', 'listening');
+}
+
+function handleTimeout() {
+    voiceState.micActive = false;
+    
+    if (!voiceState.userSpoke) {
+        attemptCount++;
+        
+        if (attemptCount >= MAX_ATTEMPTS) {
+            document.getElementById('audioMessage').innerHTML = '<span class="failure-text">⚠️ Maximum attempts exceeded</span>';
+            setTimeout(() => {
+                let shapes = ['⬤','⬛','▲'];
+                let randIdx = Math.floor(Math.random()*3);
+                document.getElementById('shapeDisplay').innerText = shapes[randIdx];
+                show('verify2');
+            }, 1500);
+        } else {
+            setRandomQuestion();
+            document.getElementById('audioMessage').innerHTML = `<span class="failure-text">⏱️ Time expired. Attempt ${attemptCount}/${MAX_ATTEMPTS}. New question loaded.</span>`;
+            document.getElementById('micStatusLabel').innerText = 'tap to retry';
+            document.getElementById('micButton').classList.remove('listening');
+        }
+    } else if (voiceState.userSpoke && !voiceState.isCorrect) {
+        attemptCount++;
+        
+        if (attemptCount >= MAX_ATTEMPTS) {
+            document.getElementById('audioMessage').innerHTML = '<span class="failure-text">⚠️ Maximum attempts exceeded</span>';
+            setTimeout(() => {
+                let shapes = ['⬤','⬛','▲'];
+                let randIdx = Math.floor(Math.random()*3);
+                document.getElementById('shapeDisplay').innerText = shapes[randIdx];
+                show('verify2');
+            }, 1500);
+        } else {
+            setRandomQuestion();
+            document.getElementById('audioMessage').innerHTML = `<span class="failure-text">✗ Wrong answer. Attempt ${attemptCount}/${MAX_ATTEMPTS}. New question loaded.</span>`;
+            document.getElementById('micStatusLabel').innerText = 'tap to retry';
+            document.getElementById('micButton').classList.remove('listening');
+        }
+    }
+}
+
+// Mic button
+const micBtn = document.getElementById('micButton');
+micBtn.addEventListener('click', function() {
+    if (voiceState.micActive) {
+        if (!voiceState.userSpoke) {
+            simulateSpeech();
+        }
+        return;
+    }
+    
+    if (micTimer) clearTimeout(micTimer);
+    
+    voiceState.micActive = true;
+    voiceState.audioDetected = false;
+    voiceState.isCorrect = false;
+    voiceState.userSpoke = false;
+    voiceState.capturedAnswer = "";
+    
+    this.classList.add('listening');
+    this.classList.remove('active');
+    document.getElementById('micStatusLabel').innerText = 'listening...';
+    document.getElementById('audioMessage').innerHTML = '<span class="success-text">🎤 Listening... speak now</span>';
+    
+    micTimer = setTimeout(handleTimeout, 5000);
+});
+
+function simulateSpeech() {
+    if (!voiceState.micActive || voiceState.userSpoke) return;
+    
+    voiceState.userSpoke = true;
+    voiceState.audioDetected = true;
+    
+    const currentQuestion = voiceState.question;
+    let simulatedAnswer = "";
+    
+    if (currentQuestion.includes("ice")) simulatedAnswer = "melts";
+    else if (currentQuestion.includes("stove")) simulatedAnswer = "pain";
+    else if (currentQuestion.includes("walk")) simulatedAnswer = "yes";
+    else if (currentQuestion.includes("drink water")) simulatedAnswer = "yes";
+    else if (currentQuestion.includes("eyes")) simulatedAnswer = "yes i do";
+    else if (currentQuestion.includes("clap")) simulatedAnswer = "yes i can clap";
+    else if (currentQuestion.includes("sleep")) simulatedAnswer = "yes usually";
+    else if (currentQuestion.includes("eat food")) simulatedAnswer = "of course";
+    else if (currentQuestion.includes("mobile")) simulatedAnswer = "yes i do";
+    else if (currentQuestion.includes("smile")) simulatedAnswer = "yes i can smile";
+    else simulatedAnswer = "yes";
+    
+    voiceState.capturedAnswer = simulatedAnswer.toLowerCase();
+    
+    const possibleCorrect = correctAnswerMap[currentQuestion] || ["yes"];
+    voiceState.isCorrect = possibleCorrect.some(correct => 
+        voiceState.capturedAnswer.includes(correct)
+    );
+    
+    const audioMessage = document.getElementById('audioMessage');
+    
+    if (voiceState.isCorrect) {
+        audioMessage.innerHTML = '<span class="success-text">✓ Voice verified</span>';
+        document.getElementById('micStatusLabel').innerText = 'verified';
+        document.getElementById('micButton').classList.remove('listening');
+        document.getElementById('micButton').classList.add('active');
+        
+        if (micTimer) {
+            clearTimeout(micTimer);
+            micTimer = null;
+        }
+        attemptCount = 0;
+    } else {
+        attemptCount++;
+        
+        if (attemptCount >= MAX_ATTEMPTS) {
+            audioMessage.innerHTML = '<span class="failure-text">⚠️ Maximum attempts exceeded</span>';
+            document.getElementById('micButton').classList.remove('listening');
+            setTimeout(() => {
+                let shapes = ['⬤','⬛','▲'];
+                let randIdx = Math.floor(Math.random()*3);
+                document.getElementById('shapeDisplay').innerText = shapes[randIdx];
+                show('verify2');
+            }, 1500);
+        } else {
+            setRandomQuestion();
+            audioMessage.innerHTML = `<span class="failure-text">✗ Wrong answer. Attempt ${attemptCount}/${MAX_ATTEMPTS}. New question loaded.</span>`;
+            document.getElementById('micStatusLabel').innerText = 'tap to retry';
+            document.getElementById('micButton').classList.remove('listening');
+        }
+        
+        voiceState.micActive = false;
+        if (micTimer) {
+            clearTimeout(micTimer);
+            micTimer = null;
+        }
+    }
+}
+
+// Demo speech triggers
+document.addEventListener('keydown', (e) => {
+    if (e.key === 's' || e.key === 'S') {
+        simulateSpeech();
+    }
+});
+
+micBtn.addEventListener('dblclick', function() {
+    simulateSpeech();
+});
+
+// Registration
+document.getElementById('registerUserBtn').addEventListener('click', async () => {
     let name = document.getElementById('regName').value.trim();
     let aadhar = document.getElementById('regAadhar').value.trim();
     let dob = document.getElementById('regDob').value;
@@ -48,207 +247,102 @@ document.getElementById('registerUserBtn').addEventListener('click', () => {
         return;
     }
 
-    let strong = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
-    if (!strong.test(pwd)) {
-        alert('Password must be 8+ chars, with uppercase, number, and special character');
-        return;
+    try {
+        const response = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, aadhar, dob, gender, mobile, email, password: pwd })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('Registration successful');
+            show('auth');
+        } else {
+            alert('Registration failed');
+        }
+    } catch (error) {
+        alert('Server error. Make sure backend is running.');
     }
-
-    db.users.push({ name, aadhar, dob, gender, mobile, email, password: pwd });
-    persist();
-    alert('Registration successful');
-    show('auth');
 });
 
-// ===== QUESTION BANK =====
-const questionBank = [
-    "What happens to ice in a hot pan?", "If you touch a hot stove what do you say?",
-    "Can humans walk?", "Can you touch your hand?", "Can you bath?", "Can you sleep?",
-    "Can you eat?", "Can you beat someone?", "Can you cook the food?", "Can you touch your hair?",
-    "Can you eat mango?", "Can you put your phone on charger?", "Can you drink the water?",
-    "You have the smart phone?", "Can you smile?", "Can you touch the laptop?", "Can drink the tea?",
-    "At what time you sleep?", "Can you open the door?", "Can you see yourself in mirror?",
-    "Can you eat pizza?", "Can you jump?", "Can you eat rice ?", "Do you wear the footwear?",
-    "Do you have blood?", "Can you put your head down?", "Do you have eyes?", "Do you have tongue?",
-    "Can you wash your hand?", "Can drink coffee?", "Can you open the bottle cap?",
-    "Can you clap?", "Can you brush your teeth?", "Can you sit?", "Do you have lungs?",
-    "Do you you have stomach?", "Can touch the table fan?", "Can you touch the car?",
-    "Can you wash your face?", "Can you hug your mom?", "Can you put the bottle on the table?",
-    "Can you swim?", "Can you drink water?", "Can you use mobile?", "Can you put the book on the table?",
-    "Can you tap on the table?", "Do you have the nails?", "Do you have teeth?", "Can you dance?",
-    "Can you bring the book?", "Can you hold the bag?", "Can you blink your eyes?",
-    "Do you drill the wall?", "Do you wash your hair?", "Can you touch the mobile?",
-    "Do you travel?", "Do you have shadow?", "Can you code in 3 seconds?", "Are you AI?",
-    "Can you do repetitive tasks in few seconds ?", "Are you GEN AI?",
-    "Are you hardware/software?", "Can you recall million of data without forgetting them?",
-    "Can you work continuously without sleep, rest, or breaks?", "Do you use NLP?",
-    "Do you have artificial neurons ?", "Are you made with algorithms?", "Can you use the bytecode?",
-    "Are you the existence of software/hardware?", "Are you available for the 24/7?",
-    "Can you read 100 pages in few seconds?", "Can you react in few milliseconds?",
-    "Can you remember 100 numbers instantly?", "Can you create the visual art?",
-    "Can you do image recognition?", "Can you do voice recognition?"
-];
-
-function setRandomQuestion() {
-    let idx = Math.floor(Math.random() * questionBank.length);
-    document.getElementById('questionDisplay').innerText = questionBank[idx];
-}
-
-// ===== BEHAVIORAL DATA COLLECTION =====
-let mouseMoves = [];
-let scrollEvents = [];
-let voice = { pitch: 0, mod: 0, noise: 0 };
-let typingStd = 45; // Default irregular
-
-// Mouse tracking
-let micBtn = document.getElementById('micButton');
-micBtn.addEventListener('mousemove', (e) => {
-    mouseMoves.push({ x: e.clientX, y: e.clientY, t: Date.now() });
-    if (mouseMoves.length > 40) mouseMoves = mouseMoves.slice(-30);
-});
-
-// Scroll tracking
-document.getElementById('micSensorZone').addEventListener('wheel', (e) => {
-    scrollEvents.push({ delta: e.deltaY, time: Date.now() });
-    if (scrollEvents.length > 20) scrollEvents.shift();
-});
-
-// Voice simulation
-micBtn.addEventListener('click', function() {
-    this.classList.add('active');
-    voice = {
-        pitch: 100 + Math.random() * 70,
-        mod: 10 + Math.random() * 45,
-        noise: 5 + Math.random() * 40
-    };
-    setTimeout(() => this.classList.remove('active'), 600);
-});
-
-// ===== STAGE 1 VERIFICATION =====
-document.getElementById('submitV1').addEventListener('click', () => {
+// Login verification
+document.getElementById('submitV1').addEventListener('click', async () => {
     let uid = document.getElementById('loginUid').value.trim();
     let pwd = document.getElementById('loginPwd').value;
-
+    
     if (!uid || !pwd) {
         alert('User ID and password required');
         return;
     }
 
-    // Calculate mouse jaggedness
-    let mouseJag = 25;
-    if (mouseMoves.length >= 4) {
-        let dists = [];
-        for (let i = 1; i < mouseMoves.length; i++) {
-            let dx = mouseMoves[i].x - mouseMoves[i - 1].x;
-            let dy = mouseMoves[i].y - mouseMoves[i - 1].y;
-            dists.push(Math.sqrt(dx * dx + dy * dy));
+    try {
+        const response = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ aadhar: uid, password: pwd })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert('Invalid credentials. Demo: 123412341234 / Demo@123');
+            return;
         }
-        let avgD = dists.reduce((a, b) => a + b, 0) / dists.length;
-        let varD = dists.map(d => Math.pow(d - avgD, 2)).reduce((a, b) => a + b, 0) / dists.length;
-        mouseJag = Math.sqrt(varD);
-    }
 
-    // Calculate scroll irregularity
-    let scrollVal = scrollEvents.length ? 
-        scrollEvents.map(s => Math.abs(s.delta)).reduce((a, b) => a + b, 0) / scrollEvents.length : 25;
-
-    let pitch = voice.pitch || 140;
-    let mod = voice.mod || 25;
-    let noise = voice.noise || 20;
-
-    // Decision: grant if irregular
-    let grant = (noise > 12 || mod > 22 || mouseJag > 22 || typingStd > 40 || scrollVal > 25);
-
-    // Store audit
-    db.audits.push({ 
-        stage1: uid, 
-        typingStd, 
-        mouseJag, 
-        scrollVal, 
-        pitch, 
-        mod, 
-        noise, 
-        decision: grant ? 'grant' : 'deny' 
-    });
-    persist();
-
-    if (grant) {
-        alert('Access granted');
-        show('welcome');
-    } else {
-        alert('Additional step required');
-        let shapes = ['⬤', '⬛', '▲'];
-        let randIdx = Math.floor(Math.random() * 3);
-        document.getElementById('shapeDisplay').innerText = shapes[randIdx];
-        document.getElementById('shapeDisplay').setAttribute('data-shape', 
-            shapes[randIdx] === '⬤' ? 'circle' : shapes[randIdx] === '⬛' ? 'square' : 'triangle');
-        show('verify2');
+        if (voiceState.userSpoke && voiceState.isCorrect) {
+            alert('✅ Access granted!');
+            show('welcome');
+        } else {
+            alert('⛔ Please complete voice verification first.');
+        }
+    } catch (error) {
+        alert('Server error. Make sure backend is running.');
     }
 });
 
-// ===== CANVAS DRAWING =====
+// Canvas drawing
 let canvas = document.getElementById('drawCanvas');
-let ctx = canvas.getContext('2d');
-ctx.lineWidth = 3;
-ctx.strokeStyle = '#1e4a7a';
-ctx.lineCap = 'round';
-
-let drawing = false;
-
-canvas.addEventListener('mousedown', (e) => {
-    drawing = true;
-    ctx.beginPath();
-    ctx.moveTo(e.offsetX, e.offsetY);
-});
-
-canvas.addEventListener('mousemove', (e) => {
-    if (drawing) {
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.stroke();
-    }
-});
-
-canvas.addEventListener('mouseup', () => drawing = false);
-canvas.addEventListener('mouseleave', () => drawing = false);
-
-document.getElementById('clearCanvas').addEventListener('click', () => {
-    ctx.clearRect(0, 0, 340, 200);
-});
-
-// ===== STAGE 2 VERIFICATION =====
-document.getElementById('submitShape').addEventListener('click', () => {
-    let imgData = ctx.getImageData(0, 0, 340, 200).data;
-    let drawn = 0;
+if (canvas) {
+    let ctx = canvas.getContext('2d');
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#1e4a7a';
+    ctx.lineCap = 'round';
+    let drawing = false;
     
-    for (let i = 0; i < imgData.length; i += 4) {
-        if (imgData[i] < 250) drawn++;
-    }
-    
-    let accurate = (drawn > 800 && drawn < 10000);
-    let finalAccess = accurate ? false : true; // accurate = deny
-
-    db.audits.push({ stage2: true, drawn, accurate, finalAccess });
-    persist();
-
-    if (finalAccess) alert('Access granted');
-    else alert('Access denied');
-    
-    show('welcome');
-});
-
-// ===== INITIAL SETUP =====
-if (db.users.length === 0) {
-    db.users.push({ 
-        name: "Demo User", 
-        aadhar: "123412341234", 
-        dob: "1985-05-15", 
-        gender: "Male", 
-        mobile: "9988776655", 
-        email: "demo@bank.com", 
-        password: "Demo@123" 
+    canvas.addEventListener('mousedown', (e) => {
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
     });
-    persist();
+    
+    canvas.addEventListener('mousemove', (e) => {
+        if (drawing) {
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+        }
+    });
+    
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
+    
+    document.getElementById('clearCanvas').addEventListener('click', () => ctx.clearRect(0, 0, 340, 200));
+    
+    document.getElementById('submitShape').addEventListener('click', () => {
+        let imgData = ctx.getImageData(0, 0, 340, 200).data;
+        let drawn = 0;
+        for (let i = 0; i < imgData.length; i += 4) {
+            if (imgData[i] < 250) drawn++;
+        }
+        
+        if (drawn > 800 && drawn < 10000) {
+            alert('✅ Access granted');
+        } else {
+            alert('⛔ Access denied');
+        }
+        show('welcome');
+    });
 }
 
-// Start with welcome page
+// Start
 show('welcome');

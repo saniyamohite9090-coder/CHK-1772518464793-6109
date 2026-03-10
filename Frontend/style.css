@@ -1,4 +1,3 @@
-/* ===== RESET & GLOBAL ===== */
 * {
     margin: 0;
     padding: 0;
@@ -15,7 +14,6 @@ body {
     padding: 20px;
 }
 
-/* ===== MAIN CARD ===== */
 .sbi-card {
     width: 100%;
     max-width: 880px;
@@ -26,7 +24,6 @@ body {
     border: 1px solid #d0e2f0;
 }
 
-/* ===== HEADER ===== */
 .sbi-header {
     background: #f0f7fc;
     padding: 18px 32px;
@@ -47,10 +44,13 @@ body {
     color: #1e4a7a;
 }
 
+.sbi-logo-text {
+    color: #1e4a7a;
+}
+
 .sbi-logo-text .top {
     font-size: 1.1rem;
     font-weight: 400;
-    color: #1e4a7a;
 }
 
 .sbi-logo-text .bank-name {
@@ -59,9 +59,8 @@ body {
     color: #003366;
 }
 
-/* ===== PAGES ===== */
 .page {
-    padding: 30px 40px 38px;
+    padding: 30px 40px 38px 40px;
     background: #ffffff;
 }
 
@@ -69,19 +68,6 @@ body {
     display: none !important;
 }
 
-.page-title {
-    color: #1e4a7a;
-    font-weight: 400;
-    margin-bottom: 28px;
-}
-
-.section-title {
-    color: #1e4a7a;
-    font-weight: 400;
-    margin-bottom: 20px;
-}
-
-/* ===== BUTTONS ===== */
 .btn {
     background: #ffffff;
     border: 1.5px solid #a0b8d0;
@@ -91,10 +77,10 @@ body {
     padding: 12px 30px;
     border-radius: 40px;
     cursor: pointer;
-    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     gap: 10px;
+    transition: all 0.2s ease;
 }
 
 .btn:hover {
@@ -103,7 +89,9 @@ body {
 }
 
 .btn-primary {
+    background: #ffffff;
     border: 1.5px solid #1e4a7a;
+    color: #1e4a7a;
 }
 
 .btn-primary:hover {
@@ -111,12 +99,9 @@ body {
 }
 
 .btn-secondary {
+    background: #ffffff;
     border: 1.5px solid #b0c4de;
-}
-
-.btn-container {
-    text-align: center;
-    margin: 20px 0 10px;
+    color: #2b4b6f;
 }
 
 .flex-row {
@@ -126,11 +111,6 @@ body {
     align-items: center;
 }
 
-.flex-row.center {
-    justify-content: center;
-}
-
-/* ===== FORM FIELDS ===== */
 .field {
     margin-bottom: 20px;
 }
@@ -141,12 +121,9 @@ body {
     margin-bottom: 6px;
     display: block;
     font-size: 0.95rem;
-    text-transform: capitalize;
 }
 
-.field input,
-.field select,
-.field textarea {
+.field input, .field select {
     width: 100%;
     padding: 14px 20px;
     border: 1.5px solid #cbdae9;
@@ -156,9 +133,7 @@ body {
     transition: 0.15s;
 }
 
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
+.field input:focus, .field select:focus {
     border-color: #7e9ec0;
     outline: none;
     box-shadow: 0 0 0 3px rgba(126, 158, 192, 0.15);
@@ -174,7 +149,6 @@ body {
     flex: 1 1 180px;
 }
 
-/* ===== MIC PANEL ===== */
 .mic-panel {
     background: #f8fcff;
     border-radius: 36px;
@@ -208,13 +182,24 @@ body {
     border: 2px solid #ffffff;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     cursor: pointer;
-    transition: 0.15s;
     color: white;
     font-size: 2.4rem;
+    transition: 0.15s;
 }
 
 .mic-circle.active {
     background: #b33f3f;
+}
+
+.mic-circle.listening {
+    background: #2a9d8f;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(42, 157, 143, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(42, 157, 143, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(42, 157, 143, 0); }
 }
 
 .mic-label {
@@ -229,26 +214,22 @@ body {
     background: #ffffff;
     border-radius: 36px;
     padding: 18px 24px;
-    font-weight: 400;
     font-size: 1.1rem;
     color: #1e4a7a;
     border: 1.5px solid #b8d2e8;
     min-width: 250px;
 }
 
-.answer-area {
-    margin-top: 16px;
+.status-message {
+    margin-top: 15px;
+    padding: 10px;
+    text-align: center;
+    color: #1e4a7a;
+    font-size: 0.95rem;
+    min-height: 40px;
+    font-weight: 500;
 }
 
-.answer-area textarea {
-    width: 100%;
-    border-radius: 30px;
-    padding: 14px 22px;
-    border: 1.5px solid #b8d2e8;
-    resize: vertical;
-}
-
-/* ===== CANVAS ===== */
 .canvas-area {
     background: #f8fcff;
     border-radius: 36px;
@@ -280,12 +261,6 @@ canvas {
     border: 2px solid #b8cde0;
 }
 
-.shape-container {
-    text-align: center;
-    margin-bottom: 16px;
-}
-
-/* ===== ALERT ===== */
 .alert-info {
     background: #f2f8ff;
     border-left: 4px solid #1e4a7a;
@@ -295,14 +270,13 @@ canvas {
     margin-bottom: 20px;
 }
 
-/* ===== WELCOME PAGE ===== */
 .welcome-hero {
     background: #f8fcff;
     border-radius: 36px;
     padding: 36px 32px;
     margin-bottom: 24px;
-    border: 1.5px solid #c0d4e8;
     text-align: center;
+    border: 1.5px solid #c0d4e8;
 }
 
 .welcome-text h2 {
@@ -315,9 +289,21 @@ canvas {
     font-size: 3.8rem;
     font-weight: 500;
     color: #003366;
-    line-height: 1.2;
 }
 
-.footer-note {
-    height: 8px;
+.success-text {
+    color: #2a9d8f;
+    font-weight: 600;
+}
+
+.failure-text {
+    color: #b33f3f;
+    font-weight: 600;
+}
+
+.small-note {
+    font-size: 0.9rem;
+    color: #6d8aac;
+    margin-top: 4px;
+    text-align: center;
 }
