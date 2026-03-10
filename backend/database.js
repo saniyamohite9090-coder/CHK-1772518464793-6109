@@ -23,7 +23,7 @@ async function initDatabase() {
             multipleStatements: true
         });
 
-        // Read and execute schema.sql
+        // Read schema.sql file
         const schemaPath = path.join(__dirname, '../database/schema.sql');
         const schema = fs.readFileSync(schemaPath, 'utf8');
         
@@ -31,15 +31,10 @@ async function initDatabase() {
         await connection.query(schema);
         
         console.log("✅ Database initialized successfully");
-        console.log("📊 Tables created:");
-        console.log("   - users");
-        console.log("   - voice_analysis");
-        console.log("   - typing_analysis");
-        console.log("   - mouse_analysis");
-        console.log("   - drawing_analysis");
-        console.log("   - complete_analysis");
-        console.log("   - sessions");
-        console.log("   - audit_logs");
+        console.log("📊 Tables created: users, user_analysis");
+
+        // Hash the demo user password if it exists and is plain text
+        await hashDemoUserPassword(connection);
 
     } catch (error) {
         console.error("❌ Database initialization error:", error.message);
@@ -51,16 +46,52 @@ async function initDatabase() {
     }
 }
 
+// Hash demo user password if it's plain text
+async function hashDemoUserPassword(connection) {
+    try {
+        // Use the connection passed or create a new one
+        const conn = connection || await pool.getConnection();
+        
+        // Check if demo user exists with plain text password
+        const [users] = await conn.query(
+            "SELECT * FROM users WHERE aadhar = ?",
+            ['123412341234']
+        );
+        
+        if (users.length > 0) {
+            const user = users[0];
+            
+            // Check if password is not hashed (starts with $2a$ for bcrypt)
+            if (!user.password.startsWith('$2a$')) {
+                console.log("🔄 Hashing demo user password...");
+                
+                // Hash the password
+                const hashedPassword = await bcrypt.hash(user.password, 10);
+                
+                // Update the password
+                await conn.query(
+                    "UPDATE users SET password = ? WHERE aadhar = ?",
+                    [hashedPassword, '123412341234']
+                );
+                
+                console.log("✅ Demo user password hashed successfully");
+            } else {
+                console.log("✅ Demo user password already hashed");
+            }
+        }
+        
+        if (!connection) conn.release();
+        
+    } catch (error) {
+        console.error("❌ Error hashing demo password:", error.message);
+    }
+}
+
 // Test database connection
 async function testConnection() {
     try {
         const conn = await pool.getConnection();
         console.log("✅ MySQL connection test successful");
-        
-        // Get database stats
-        const [tables] = await conn.query("SHOW TABLES");
-        console.log(`📊 Total tables: ${tables.length}`);
-        
         conn.release();
         return true;
     } catch (error) {
@@ -71,12 +102,15 @@ async function testConnection() {
 
 // ===== USER FUNCTIONS =====
 async function createUser(userData) {
-    const { name, aadhar, dob, gender, mobile, email, password } = userData;
+    const { full_name, aadhar, mobile, email, password } = userData;
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
     
     const [result] = await pool.query(
-        `INSERT INTO users (name, aadhar, dob, gender, mobile, email, password) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [name, aadhar, dob, gender, mobile, email, password]
+        `INSERT INTO users (full_name, aadhar, mobile, email, password) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [full_name, aadhar, mobile, email, hashedPassword]
     );
     
     return result.insertId;
@@ -92,7 +126,7 @@ async function findUserByAadhar(aadhar) {
 
 async function findUserById(id) {
     const [users] = await pool.query(
-        "SELECT id, name, aadhar, dob, gender, mobile, email, created_at FROM users WHERE id = ?",
+        "SELECT id, full_name, aadhar, mobile, email, created_at FROM users WHERE id = ?",
         [id]
     );
     return users[0];
@@ -100,142 +134,44 @@ async function findUserById(id) {
 
 async function getAllUsers() {
     const [users] = await pool.query(`
-        SELECT id, name, aadhar, mobile, email, created_at 
+        SELECT id, full_name, aadhar, mobile, email, created_at 
         FROM users 
         ORDER BY created_at DESC
     `);
     return users;
 }
 
-// ===== SESSION FUNCTIONS =====
-async function createSession(userId, sessionId, ipAddress, userAgent) {
-    const [result] = await pool.query(
-        `INSERT INTO sessions (user_id, session_id, ip_address, user_agent) 
-         VALUES (?, ?, ?, ?)`,
-        [userId, sessionId, ipAddress, userAgent]
-    );
-    return result.insertId;
-}
-
-async function endSession(sessionId) {
-    await pool.query(
-        `UPDATE sessions SET is_active = FALSE, logout_time = CURRENT_TIMESTAMP 
-         WHERE session_id = ?`,
-        [sessionId]
-    );
-}
-
-// ===== VOICE ANALYSIS FUNCTIONS =====
-async function saveVoiceAnalysis(data) {
-    const { user_id, session_id, question, answer, is_correct, attempt, 
-            voice_pitch, background_noise, duration, naturalness, is_human, confidence } = data;
-    
-    const [result] = await pool.query(
-        `INSERT INTO voice_analysis 
-         (user_id, session_id, question_asked, user_answer, is_correct, attempt_count,
-          voice_pitch, background_noise_level, voice_duration, voice_naturalness,
-          is_human_voice, confidence_score) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, session_id, question, answer, is_correct, attempt,
-         voice_pitch, background_noise, duration, naturalness, is_human, confidence]
-    );
-    
-    return result.insertId;
-}
-
-// ===== TYPING ANALYSIS FUNCTIONS =====
-async function saveTypingAnalysis(data) {
-    const { user_id, session_id, speed, mistakes, backspaces, total_keys, 
-            accuracy, is_human, confidence } = data;
-    
-    const [result] = await pool.query(
-        `INSERT INTO typing_analysis 
-         (user_id, session_id, typing_speed_wpm, typing_mistakes, backspace_count,
-          total_keys_pressed, accuracy_percentage, is_human_typing, confidence_score) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, session_id, speed, mistakes, backspaces, total_keys, 
-         accuracy, is_human, confidence]
-    );
-    
-    return result.insertId;
-}
-
-// ===== MOUSE ANALYSIS FUNCTIONS =====
-async function saveMouseAnalysis(data) {
-    const { user_id, session_id, movements, distance, clicks, speed, 
-            pattern, is_human, confidence } = data;
-    
-    const [result] = await pool.query(
-        `INSERT INTO mouse_analysis 
-         (user_id, session_id, mouse_movements, mouse_distance_pixels, mouse_clicks,
-          mouse_speed, mouse_pattern, is_human_mouse, confidence_score) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, session_id, movements, distance, clicks, speed, 
-         pattern, is_human, confidence]
-    );
-    
-    return result.insertId;
-}
-
-// ===== DRAWING ANALYSIS FUNCTIONS =====
-async function saveDrawingAnalysis(data) {
-    const { user_id, session_id, shape, accuracy, duration, is_human, confidence } = data;
-    
-    const [result] = await pool.query(
-        `INSERT INTO drawing_analysis 
-         (user_id, session_id, shape_required, drawing_accuracy, drawing_duration,
-          is_human_drawing, confidence_score) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, session_id, shape, accuracy, duration, is_human, confidence]
-    );
-    
-    return result.insertId;
-}
-
-// ===== COMPLETE ANALYSIS FUNCTIONS =====
-async function saveCompleteAnalysis(data) {
+// ===== ANALYSIS FUNCTIONS =====
+async function saveUserAnalysis(analysisData) {
     const { 
-        user_id, session_id, name, aadhar, mobile, email,
-        voice_pitch, background_noise, voice_duration, voice_naturalness, 
-        voice_is_human, voice_confidence,
-        typing_speed, typing_mistakes, backspace_count, 
-        typing_is_human, typing_confidence,
-        mouse_movements, mouse_distance, mouse_clicks, 
-        mouse_is_human, mouse_confidence,
-        drawing_accuracy, drawing_is_human, drawing_confidence,
-        is_human_overall, overall_confidence
-    } = data;
+        user_id, session_id, full_name, aadhar_number, mobile_number, email,
+        typing_speed_wpm, typing_mistakes, backspace_count,
+        mouse_movements, mouse_distance_pixels, mouse_clicks,
+        voice_pitch_hz, background_noise_level, voice_duration_seconds,
+        is_human, confidence_score
+    } = analysisData;
     
     const [result] = await pool.query(
-        `INSERT INTO complete_analysis 
-         (user_id, session_id, name, aadhar, mobile, email,
-          voice_pitch, background_noise, voice_duration, voice_naturalness, 
-          voice_is_human, voice_confidence,
-          typing_speed_wpm, typing_mistakes, backspace_count, 
-          typing_is_human, typing_confidence,
-          mouse_movements, mouse_distance, mouse_clicks, 
-          mouse_is_human, mouse_confidence,
-          drawing_accuracy, drawing_is_human, drawing_confidence,
-          is_human_overall, overall_confidence) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, session_id, name, aadhar, mobile, email,
-         voice_pitch, background_noise, voice_duration, voice_naturalness, 
-         voice_is_human, voice_confidence,
-         typing_speed, typing_mistakes, backspace_count, 
-         typing_is_human, typing_confidence,
-         mouse_movements, mouse_distance, mouse_clicks, 
-         mouse_is_human, mouse_confidence,
-         drawing_accuracy, drawing_is_human, drawing_confidence,
-         is_human_overall, overall_confidence]
+        `INSERT INTO user_analysis 
+         (user_id, session_id, full_name, aadhar_number, mobile_number, email,
+          typing_speed_wpm, typing_mistakes, backspace_count,
+          mouse_movements, mouse_distance_pixels, mouse_clicks,
+          voice_pitch_hz, background_noise_level, voice_duration_seconds,
+          is_human, confidence_score) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [user_id, session_id, full_name, aadhar_number, mobile_number, email,
+         typing_speed_wpm, typing_mistakes, backspace_count,
+         mouse_movements, mouse_distance_pixels, mouse_clicks,
+         voice_pitch_hz, background_noise_level, voice_duration_seconds,
+         is_human, confidence_score]
     );
     
     return result.insertId;
 }
 
-// ===== DATA RETRIEVAL FUNCTIONS =====
 async function getAllAnalysis() {
     const [rows] = await pool.query(`
-        SELECT * FROM complete_analysis 
+        SELECT * FROM user_analysis 
         ORDER BY created_at DESC
     `);
     return rows;
@@ -243,7 +179,7 @@ async function getAllAnalysis() {
 
 async function getAnalysisByUserId(userId) {
     const [rows] = await pool.query(`
-        SELECT * FROM complete_analysis 
+        SELECT * FROM user_analysis 
         WHERE user_id = ? 
         ORDER BY created_at DESC
     `, [userId]);
@@ -252,25 +188,11 @@ async function getAnalysisByUserId(userId) {
 
 async function getAnalysisBySessionId(sessionId) {
     const [rows] = await pool.query(`
-        SELECT * FROM complete_analysis 
+        SELECT * FROM user_analysis 
         WHERE session_id = ? 
         ORDER BY created_at DESC
     `, [sessionId]);
-    return rows[0];
-}
-
-// ===== AUDIT FUNCTIONS =====
-async function createAuditLog(data) {
-    const { user_id, session_id, event_type, description, ip_address, user_agent, additional_data } = data;
-    
-    const [result] = await pool.query(
-        `INSERT INTO audit_logs 
-         (user_id, session_id, event_type, event_description, ip_address, user_agent, additional_data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, session_id, event_type, description, ip_address, user_agent, JSON.stringify(additional_data)]
-    );
-    
-    return result.insertId;
+    return rows;
 }
 
 // ===== STATISTICS FUNCTIONS =====
@@ -278,24 +200,11 @@ async function getDatabaseStats() {
     const [stats] = await pool.query(`
         SELECT 
             (SELECT COUNT(*) FROM users) as total_users,
-            (SELECT COUNT(*) FROM voice_analysis) as total_voice_analyses,
-            (SELECT COUNT(*) FROM typing_analysis) as total_typing_analyses,
-            (SELECT COUNT(*) FROM mouse_analysis) as total_mouse_analyses,
-            (SELECT COUNT(*) FROM drawing_analysis) as total_drawing_analyses,
-            (SELECT COUNT(*) FROM complete_analysis) as total_complete_analyses,
-            (SELECT COUNT(*) FROM sessions) as total_sessions,
-            (SELECT COUNT(*) FROM audit_logs) as total_audit_logs
-    `);
-    return stats[0];
-}
-
-async function getHumanBotStats() {
-    const [stats] = await pool.query(`
-        SELECT 
-            SUM(CASE WHEN is_human_overall = TRUE THEN 1 ELSE 0 END) as human_count,
-            SUM(CASE WHEN is_human_overall = FALSE THEN 1 ELSE 0 END) as bot_count,
-            AVG(overall_confidence) as avg_confidence
-        FROM complete_analysis
+            (SELECT COUNT(*) FROM user_analysis) as total_analyses,
+            (SELECT AVG(typing_speed_wpm) FROM user_analysis) as avg_typing_speed,
+            (SELECT AVG(confidence_score) FROM user_analysis) as avg_confidence,
+            (SELECT SUM(CASE WHEN is_human = TRUE THEN 1 ELSE 0 END) FROM user_analysis) as human_count,
+            (SELECT SUM(CASE WHEN is_human = FALSE THEN 1 ELSE 0 END) FROM user_analysis) as bot_count
     `);
     return stats[0];
 }
@@ -304,33 +213,13 @@ module.exports = {
     pool,
     initDatabase,
     testConnection,
-    
-    // User functions
     createUser,
     findUserByAadhar,
     findUserById,
     getAllUsers,
-    
-    // Session functions
-    createSession,
-    endSession,
-    
-    // Analysis functions
-    saveVoiceAnalysis,
-    saveTypingAnalysis,
-    saveMouseAnalysis,
-    saveDrawingAnalysis,
-    saveCompleteAnalysis,
-    
-    // Data retrieval
+    saveUserAnalysis,
     getAllAnalysis,
     getAnalysisByUserId,
     getAnalysisBySessionId,
-    
-    // Audit functions
-    createAuditLog,
-    
-    // Statistics
-    getDatabaseStats,
-    getHumanBotStats
+    getDatabaseStats
 };

@@ -4,7 +4,7 @@ module.exports = {
         host: 'localhost',
         user: 'root',
         password: 'root',
-        database: 'sbi_voice_auth',
+        database: 'sbi_auth_db',
         port: 3306,
         waitForConnections: true,
         connectionLimit: 10,
